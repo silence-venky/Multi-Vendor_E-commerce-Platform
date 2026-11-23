@@ -22,12 +22,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY')
+SECRET_KEY = os.getenv('SECRET_KEY', 'm=u7hzu%qnu#a=i=#w0m5*e^g1h_m32w^+kshte7m6he&fyc%u')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'False')=='True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['silence_venky.pythonanywhere.com','127.0.0.1','localhost']
 
 
 # Application definition
@@ -86,13 +86,12 @@ WSGI_APPLICATION = 'core.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME','postgres'),
-        'USER': os.getenv('DB_USER'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': os.getenv('DB_HOST'),
-        'PORT': os.getenv('DB_PORT', '5432'),
-        'OPTIONS':{'sslmode':'require'},
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': os.getenv('DB_NAME','ecommerce_db'),
+        'USER': os.getenv('DB_USER','root'),
+        'PASSWORD': os.getenv('DB_PASSWORD','VR143vr_*'),
+        'HOST': os.getenv('DB_HOST','127.0.0.1'),
+        'PORT': os.getenv('DB_PORT', '3306'),
     }
 }
 
