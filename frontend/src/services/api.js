@@ -20,12 +20,12 @@ api.interceptors.request.use((config) =>{
 }
 );
 
-export const getProducts = () => api.get('products/');
-export const getCategories = () => api.get('categories/');
-export const registerUser = (userData) => api.post('register/', userData);
-export const loginUser = (credentials) => api.post('login/', credentials);
-export const createProduct = (productData) => api.post('products/', productData);
-export const createOrder = (orderData) => api.post('orders/', orderData);
-export const getOrders= () => api.get('orders/');
+export const getProducts = () => api.get('api/products/');
+export const getCategories = () => api.get('api/categories/');
+export const registerUser = (userData) => api.post('api/register/', userData);
+export const loginUser = (credentials) => api.post('api/login/', credentials);
+export const createProduct = (productData) => api.post('api/products/', productData);
+export const createOrder = (orderData) => api.post('api/orders/', orderData);
+export const getOrders= () => api.get('api/orders/');
 
 export default api;

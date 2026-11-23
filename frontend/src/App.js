@@ -7,7 +7,7 @@ function App() {
   const [categories, setCategories] = useState([]);
   const [orders, setOrders] = useState([]);
   const [view, setView] = useState('catalog'); 
-  const [token, setToken] = useState(localStorage.getItem('access_token') || '');
+  const [token, setToken] = useState(localStorage.getItem('access-token') || '');
   const [cart, setCart] = useState([]);
 
   // Filter states
