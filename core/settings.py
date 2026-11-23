@@ -22,12 +22,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'm=u7hzu%qnu#a=i=#w0m5*e^g1h_m32w^+kshte7m6he&fyc%u')
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-change-me-in-production')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'False')=='True'
+DEBUG = os.getenv('DEBUG', 'False')=='True'
 
-ALLOWED_HOSTS = ['silence_venky.pythonanywhere.com','127.0.0.1','localhost']
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '.onrender.com',
+    ]
+RENDER_EXTERNAL_HOSTNAME=os.getenv("RENDER_EXTERNAL_HOSTNAME")
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+    
 
 
 # Application definition
@@ -87,14 +95,30 @@ WSGI_APPLICATION = 'core.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.getenv('DB_NAME','ecommerce_db'),
-        'USER': os.getenv('DB_USER','root'),
-        'PASSWORD': os.getenv('DB_PASSWORD','VR143vr_*'),
-        'HOST': os.getenv('DB_HOST','127.0.0.1'),
+        'NAME': os.getenv('DB_NAME'),
+        'USER': os.getenv('DB_USER'),
+        'PASSWORD': os.getenv('DB_PASSWORD'),
+        'HOST': os.getenv('DB_HOST'),
         'PORT': os.getenv('DB_PORT', '3306'),
+        'OPTIONS':{
+            'ssl':{
+                'ca':"/etc/ssl/certs/ca-certificates.crt",
+            },
+        },
     }
 }
+cors_origins_env=os.getenv("CORS_ALLOWED_ORIGINS","")
+CORS_ALLOWED_ORIGINS=[
+    origin.strip() for origin in cors_origins_env.split(",") if origin.strip()
 
+]
+if not CORS_ALLOWED_ORIGINS and DEBUG:
+    CORS_ALLOWED_ORIGINS=[
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+    ]
 
 # Password validation
 # https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators
@@ -131,7 +155,16 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STORAGES={
+    "default": {
+        "BACKEND":"django.core.files.storage.FileSystemStorage",
+
+    },
+    "staticfiles":{
+        "BACKEND":"whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 
 # Email
@@ -142,5 +175,6 @@ MAILERS = {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
 }
+DEFAULT_AUTO_FIELD="django.db.models.BigAutoField"
 
 AUTH_USER_MODEL = 'api.User'
