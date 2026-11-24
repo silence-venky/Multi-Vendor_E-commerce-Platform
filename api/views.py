@@ -30,7 +30,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.request.method in SAFE_METHODS:
             return []
-        return [IsAuthenticated]
+        return [IsAuthenticated()]
     
 
     def perform_create(self, serializer):
