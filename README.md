@@ -1,6 +1,8 @@
 # 🛒 Multi-Vendor E-Commerce Platform
 
 A production-ready, full-stack multi-vendor e-commerce web application built for developer portfolios.
+
+
 Live Demo: https://multi-vendor-e-commerce-platform-km.vercel.app/ 
 
 ## 🚀 Tech Stack
