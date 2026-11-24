@@ -44,6 +44,8 @@ class ProductViewSet(viewsets.ModelViewSet):
             user=user,
             defaults={"store_name": f"{user.username}'s Store"},
         )
+        if not getattr(vendor, "is_approved", False):
+            raise PermissionDenied("Your vendor account is pending admin approval before you can add products.")
         try:
             serializer.save(vendor=vendor)
         except Exception as e:
