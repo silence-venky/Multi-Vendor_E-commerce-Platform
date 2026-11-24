@@ -3,7 +3,10 @@ from django.shortcuts import render
 from rest_framework import generics, viewsets, permissions
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied
 
+from rest_framework.permissions import IsAuthenticated
 from .models import User, VendorProfile, Category, Product, Order
 from .serializers import RegisterSerializer, CategorySerializer, ProductSerializer, OrderSerializer
 
@@ -23,10 +26,17 @@ class CategoryViewSet(viewsets.ModelViewSet):
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
-
+    permission_classes=[IsAuthenticated]
     def perform_create(self, serializer):
         # Automatically link the product to the logged-in vendor's profile
-        vendor = self.request.user.vendor_profile
+        user=self.request.user
+        if user.role != 'VENDOR':
+            raise PermissionDenied("Only vendors can create products.")
+        vendor, _=VendorProfile.objects.get_or_create(
+            user=user,
+            defaults={"store_name": f"{user.username}'s Store"},
+        
+        )
         serializer.save(vendor=vendor)
 
 # 4. Order ViewSet
