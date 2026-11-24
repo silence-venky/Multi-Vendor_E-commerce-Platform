@@ -30,7 +30,7 @@ class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = '__all__'
-        read_only_field=['vendor']
+        read_only_fields=['vendor']
 
 # 4. Order Serializer
 class OrderSerializer(serializers.ModelSerializer):
