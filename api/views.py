@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from rest_framework.exceptions import PermissionDenied
 
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import SAFE_METHODS, IsAuthenticated
 from .models import User, VendorProfile, Category, Product, Order
 from .serializers import RegisterSerializer, CategorySerializer, ProductSerializer, OrderSerializer
 
@@ -27,6 +27,10 @@ class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     permission_classes=[IsAuthenticated]
+    def get_permissions(self):
+        if self.request.method in SAFE_METHODS:
+            return []
+        return [IsAuthenticated]
     def perform_create(self, serializer):
         # Automatically link the product to the logged-in vendor's profile
         user=self.request.user
