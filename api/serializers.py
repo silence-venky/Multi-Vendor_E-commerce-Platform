@@ -23,12 +23,14 @@ class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = '__all__'
+        
 
 # 3. Product Serializer
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = '__all__'
+        read_only_field=['vendor']
 
 # 4. Order Serializer
 class OrderSerializer(serializers.ModelSerializer):
