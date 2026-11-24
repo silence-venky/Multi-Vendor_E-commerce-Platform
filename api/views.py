@@ -31,17 +31,23 @@ class ProductViewSet(viewsets.ModelViewSet):
         if self.request.method in SAFE_METHODS:
             return []
         return [IsAuthenticated]
+    
+
     def perform_create(self, serializer):
-        # Automatically link the product to the logged-in vendor's profile
-        user=self.request.user
-        if user.role != 'VENDOR':
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            raise PermissionDenied("Please log in first.")
+        if getattr(user, "role", None) != "VENDOR":
             raise PermissionDenied("Only vendors can create products.")
-        vendor, _=VendorProfile.objects.get_or_create(
+
+        vendor, _ = VendorProfile.objects.get_or_create(
             user=user,
             defaults={"store_name": f"{user.username}'s Store"},
-        
         )
-        serializer.save(vendor=vendor)
+        try:
+            serializer.save(vendor=vendor)
+        except Exception as e:
+            raise ValidationError({"detail": str(e)})
 
 # 4. Order ViewSet
 class OrderViewSet(viewsets.ModelViewSet):
