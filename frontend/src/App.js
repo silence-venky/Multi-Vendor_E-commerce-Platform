@@ -50,6 +50,8 @@ function App() {
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [productImage, setProductImage] = useState(null);
+  const [fileInputKey, setFileInputKey] = useState(0);
 
   const syncProfileState = (profileData) => {
     setProfile(profileData);
@@ -172,22 +174,31 @@ function App() {
   const handleAddProduct = async (e) => {
     e.preventDefault();
     try {
-      await createProduct({
-        name,
-        description,
-        price,
-        stock_quantity: stock,
-        category: categoryId ? parseInt(categoryId) : null,
-      });
+      const formData = new FormData();
+      formData.append('name', name);
+      formData.append('description', description);
+      formData.append('price', price);
+      formData.append('stock_quantity', stock);
+      if (categoryId) {
+        formData.append('category', parseInt(categoryId, 10));
+      }
+      if (productImage) {
+        formData.append('image', productImage);
+      }
+
+      await createProduct(formData);
       alert('Product created successfully!');
       setName('');
       setDescription('');
       setPrice('');
       setStock('');
       setCategoryId('');
+      setProductImage(null);
+      setFileInputKey((prev) => prev + 1);
       fetchProducts();
       setView('catalog');
     } catch (err) {
+      console.error('Create product error:', err);
       alert('Failed to create product. Ensure you are logged in as a Vendor with an approved profile.');
     }
   };
@@ -272,7 +283,7 @@ function App() {
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory =
-      selectedCategory === '' || product.category === parseInt(selectedCategory);
+      selectedCategory === '' || product.category === parseInt(selectedCategory, 10);
     return matchesSearch && matchesCategory;
   });
 
@@ -352,7 +363,14 @@ function App() {
               {filteredProducts.map((product) => (
                 <div key={product.id} style={{ border: '1px solid #ddd', borderRadius: '8px', padding: '15px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                   <div>
-                    <h3>{product.name}</h3>
+                    {product.image && (
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '6px', marginBottom: '10px' }}
+                      />
+                    )}
+                    <h3 style={{ margin: '0 0 6px 0' }}>{product.name}</h3>
                     <p style={{ color: '#555', fontSize: '14px' }}>{product.description}</p>
                     <p style={{ fontWeight: 'bold', color: '#2ecc71', fontSize: '18px' }}>₹{product.price}</p>
                     <p style={{ fontSize: '12px', color: product.stock_quantity > 0 ? '#888' : 'red' }}>
@@ -479,6 +497,18 @@ function App() {
                 <option key={cat.id} value={cat.id}>{cat.name}</option>
               ))}
             </select>
+            <div>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#555' }}>
+                Product Image (Optional)
+              </label>
+              <input
+                key={fileInputKey}
+                type="file"
+                accept="image/*"
+                onChange={(e) => setProductImage(e.target.files?.[0] || null)}
+                style={inputStyle}
+              />
+            </div>
             <button type="submit" style={submitBtnStyle}>Create Product</button>
           </form>
         </div>

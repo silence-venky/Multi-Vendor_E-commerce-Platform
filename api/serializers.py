@@ -1,5 +1,15 @@
 from rest_framework import serializers
-from .models import User, VendorProfile, Category, Product, Order
+from .models import (
+    User,
+    VendorProfile,
+    Category,
+    Product,
+    Order,
+    UserProfile,
+    Cart,
+    CartItem,
+)
+
 
 # 1. User Registration Serializer
 class RegisterSerializer(serializers.ModelSerializer):
@@ -14,23 +24,27 @@ class RegisterSerializer(serializers.ModelSerializer):
             username=validated_data['username'],
             email=validated_data['email'],
             password=validated_data['password'],
-            role=validated_data.get('role', 'CUSTOMER')
+            role=validated_data.get('role', 'CUSTOMER'),
         )
         return user
+
 
 # 2. Category Serializer
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = '__all__'
-        
+
 
 # 3. Product Serializer
 class ProductSerializer(serializers.ModelSerializer):
+    image = serializers.ImageField(required=False, allow_null=True)
+
     class Meta:
         model = Product
         fields = '__all__'
-        read_only_fields=['vendor']
+        read_only_fields = ['vendor']
+
 
 # 4. Order Serializer
 class OrderSerializer(serializers.ModelSerializer):
@@ -38,8 +52,6 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = '__all__'
         read_only_fields = ['customer', 'total_amount', 'status', 'razorpay_order_id']
-
-from .models import UserProfile, Cart, CartItem
 
 
 # 5. User Profile Serializer (GET & PATCH/PUT)
@@ -55,7 +67,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'username', 'email', 'role',
             'store_name', 'is_approved',
-            'phone', 'address', 'city', 'pincode'
+            'phone', 'address', 'city', 'pincode',
         ]
 
     def get_store_name(self, obj):
@@ -77,7 +89,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
 # 6. Cart Item Serializer
 class CartItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
-    product_price = serializers.DecimalField(source='product.price', max_digits=10, decimal_places=2, read_only=True)
+    product_price = serializers.DecimalField(
+        source='product.price', max_digits=10, decimal_places=2, read_only=True
+    )
     subtotal = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
