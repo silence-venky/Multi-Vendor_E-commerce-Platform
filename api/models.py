@@ -67,3 +67,91 @@ class Order(models.Model):
     def __str__(self):
         return f"Order #{self.id} - {self.status}"
 
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+
+# 6. Customer Profile (Linked to Custom User)
+class CustomerProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='customer_profile')
+    phone = models.CharField(max_length=15, blank=True)
+    address = models.TextField(blank=True)
+    city = models.CharField(max_length=100, blank=True)
+    pincode = models.CharField(max_length=10, blank=True)
+
+    def __str__(self):
+        return f"{self.user.username}'s Customer Profile"
+
+
+@receiver(post_save, sender=User)
+def create_or_save_customer_profile(sender, instance, created, **kwargs):
+    if created:
+        CustomerProfile.objects.get_or_create(user=instance)
+    else:
+        CustomerProfile.objects.get_or_create(user=instance)
+        instance.customer_profile.save()
+
+
+# 7. Persistent Cart & CartItem Models
+class Cart(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='cart')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Cart ({self.user.username})"
+
+
+class CartItem(models.Model):
+    cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='cart_items')
+    quantity = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        unique_together = ('cart', 'product')
+
+    def subtotal(self):
+        return self.product.price * self.quantity
+
+    def __str__(self):
+        return f"{self.quantity} x {self.product.name}"
+
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    phone = models.CharField(max_length=15, blank=True)
+    address = models.TextField(blank=True)
+    city = models.CharField(max_length=100, blank=True)
+    pincode = models.CharField(max_length=10, blank=True)
+
+    def __str__(self):
+        return f"{self.user.username}'s Profile"
+
+
+@receiver(post_save, sender=User)
+def create_or_save_user_profile(sender, instance, created, **kwargs):
+    UserProfile.objects.get_or_create(user=instance)
+    if not created:
+        instance.profile.save()
+
+
+class Cart(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='cart')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Cart ({self.user.username})"
+
+
+class CartItem(models.Model):
+    cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        unique_together = ('cart', 'product')
+
+    def subtotal(self):
+        return self.product.price * self.quantity
