@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   getProducts,
   getCategories,
@@ -60,7 +60,7 @@ function App() {
     setPincode(profileData?.pincode || '');
   };
 
-  const fetchSessionData = async () => {
+  const fetchSessionData = useCallback(async () => {
     const savedToken = localStorage.getItem('access_token');
     if (!savedToken) {
       setProfile(null);
@@ -84,14 +84,13 @@ function App() {
         setStatusMessage('Could not sync cart/profile from server. Check backend deployment & migrations.');
       }
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchProducts();
     fetchCategories();
   }, []);
 
-  // Runs on initial page load / refresh and whenever login token changes
   useEffect(() => {
     if (token) {
       fetchSessionData();
@@ -99,7 +98,7 @@ function App() {
       setProfile(null);
       setCart(emptyCart);
     }
-  }, [token]);
+  }, [token, fetchSessionData]);
 
   const fetchProducts = () => {
     getProducts()
