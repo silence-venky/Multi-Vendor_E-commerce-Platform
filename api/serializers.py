@@ -47,10 +47,24 @@ class UserProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
     email = serializers.EmailField(source='user.email', required=False)
     role = serializers.CharField(source='user.role', read_only=True)
+    store_name = serializers.SerializerMethodField()
+    is_approved = serializers.SerializerMethodField()
 
     class Meta:
         model = UserProfile
-        fields = ['id', 'username', 'email', 'role', 'phone', 'address', 'city', 'pincode']
+        fields = [
+            'id', 'username', 'email', 'role',
+            'store_name', 'is_approved',
+            'phone', 'address', 'city', 'pincode'
+        ]
+
+    def get_store_name(self, obj):
+        vendor = getattr(obj.user, 'vendor_profile', None)
+        return vendor.store_name if vendor else None
+
+    def get_is_approved(self, obj):
+        vendor = getattr(obj.user, 'vendor_profile', None)
+        return vendor.is_approved if vendor else None
 
     def update(self, instance, validated_data):
         user_data = validated_data.pop('user', {})

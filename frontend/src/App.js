@@ -1,14 +1,37 @@
 import React, { useEffect, useState } from 'react';
-import { getProducts, getCategories, loginUser, registerUser, createProduct, createOrder, getOrders } from './services/api';
+import {
+  getProducts,
+  getCategories,
+  loginUser,
+  registerUser,
+  createProduct,
+  createOrder,
+  getOrders,
+  getProfile,
+  updateProfile,
+  getCart,
+  addToCart as addToCartApi,
+  removeFromCart as removeFromCartApi,
+} from './services/api';
 import './App.css';
+
+const emptyCart = { items: [], total_amount: 0 };
 
 function App() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [orders, setOrders] = useState([]);
-  const [view, setView] = useState('catalog'); 
+  const [profile, setProfile] = useState(null);
+  const [view, setView] = useState('catalog');
   const [token, setToken] = useState(localStorage.getItem('access_token') || '');
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState(emptyCart);
+
+  // Profile form states
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [pincode, setPincode] = useState('');
+  const [profileEmail, setProfileEmail] = useState('');
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -27,32 +50,79 @@ function App() {
   const [stock, setStock] = useState('');
   const [categoryId, setCategoryId] = useState('');
 
+  const syncProfileForm = (profileData) => {
+    setProfile(profileData);
+    setProfileEmail(profileData?.email || '');
+    setPhone(profileData?.phone || '');
+    setAddress(profileData?.address || '');
+    setCity(profileData?.city || '');
+    setPincode(profileData?.pincode || '');
+  };
+
+  const fetchSessionData = async () => {
+    const savedToken = localStorage.getItem('access_token');
+    if (!savedToken) {
+      setProfile(null);
+      setCart(emptyCart);
+      return;
+    }
+
+    try {
+      const [profileRes, cartRes] = await Promise.all([getProfile(), getCart()]);
+      syncProfileForm(profileRes.data);
+      setCart(cartRes.data || emptyCart);
+    } catch (err) {
+      console.error('Error syncing profile/cart:', err);
+      if (err.response && err.response.status === 401) {
+        localStorage.removeItem('access_token');
+        setToken('');
+        setProfile(null);
+        setCart(emptyCart);
+      }
+    }
+  };
+
   useEffect(() => {
     fetchProducts();
     fetchCategories();
   }, []);
 
+  // Re-runs on initial page load / refresh and whenever token changes
+  useEffect(() => {
+    if (token) {
+      fetchSessionData();
+    } else {
+      setProfile(null);
+      setCart(emptyCart);
+    }
+  }, [token]);
+
   const fetchProducts = () => {
     getProducts()
-      .then(res => setProducts(res.data))
-      .catch(err => console.error("Error fetching products:", err));
+      .then((res) => setProducts(res.data))
+      .catch((err) => console.error('Error fetching products:', err));
   };
 
   const fetchCategories = () => {
     getCategories()
-      .then(res => setCategories(res.data))
-      .catch(err => console.error("Error fetching categories:", err));
+      .then((res) => setCategories(res.data))
+      .catch((err) => console.error('Error fetching categories:', err));
   };
 
   const fetchOrders = () => {
     getOrders()
-      .then(res => setOrders(res.data))
-      .catch(err => console.error("Error fetching orders:", err));
+      .then((res) => setOrders(res.data))
+      .catch((err) => console.error('Error fetching orders:', err));
   };
 
   const handleOpenOrders = () => {
     fetchOrders();
     setView('orders');
+  };
+
+  const handleOpenProfile = async () => {
+    await fetchSessionData();
+    setView('profile');
   };
 
   const handleLogin = async (e) => {
@@ -79,15 +149,33 @@ function App() {
     }
   };
 
+  const handleSaveProfile = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await updateProfile({
+        email: profileEmail,
+        phone,
+        address,
+        city,
+        pincode,
+      });
+      syncProfileForm(res.data);
+      alert('Profile updated successfully!');
+    } catch (err) {
+      console.error('Profile update error:', err);
+      alert('Failed to update profile.');
+    }
+  };
+
   const handleAddProduct = async (e) => {
     e.preventDefault();
     try {
-      await createProduct({ 
-        name, 
-        description, 
-        price, 
-        stock_quantity: stock, 
-        category: categoryId ? parseInt(categoryId) : null 
+      await createProduct({
+        name,
+        description,
+        price,
+        stock_quantity: stock,
+        category: categoryId ? parseInt(categoryId) : null,
       });
       alert('Product created successfully!');
       setName('');
@@ -102,22 +190,46 @@ function App() {
     }
   };
 
-  const addToCart = (product) => {
+  const addToCart = async (product) => {
     if (product.stock_quantity <= 0) {
       alert('Sorry, this item is out of stock!');
       return;
     }
-    setCart([...cart, product]);
-    alert(`${product.name} added to cart!`);
+    if (!token) {
+      alert('Please log in so your cart items stay saved across refreshes.');
+      setView('login');
+      return;
+    }
+    try {
+      const res = await addToCartApi(product.id, 1);
+      setCart(res.data || emptyCart);
+      alert(`${product.name} added to cart!`);
+    } catch (err) {
+      console.error('Add to cart error:', err);
+      alert(err.response?.data?.detail || 'Failed to add item to cart.');
+    }
   };
 
-  const removeFromCart = (index) => {
-    const newCart = cart.filter((_, i) => i !== index);
-    setCart(newCart);
+  const removeFromCart = async (itemId) => {
+    try {
+      const res = await removeFromCartApi(itemId);
+      setCart(res.data || emptyCart);
+    } catch (err) {
+      console.error('Remove item error:', err);
+      alert('Failed to remove item from cart.');
+    }
   };
+
+  const cartItems = cart.items || [];
+  const cartCount = cartItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
 
   const calculateTotal = () => {
-    return cart.reduce((total, item) => total + parseFloat(item.price), 0).toFixed(2);
+    if (cart.total_amount !== undefined && cart.total_amount !== null) {
+      return parseFloat(cart.total_amount).toFixed(2);
+    }
+    return cartItems
+      .reduce((total, item) => total + parseFloat(item.subtotal || 0), 0)
+      .toFixed(2);
   };
 
   const handleCheckout = async () => {
@@ -126,21 +238,21 @@ function App() {
       setView('login');
       return;
     }
-    if (cart.length === 0) {
+    if (cartItems.length === 0) {
       alert('Your cart is empty.');
       return;
     }
 
     try {
       const total_amount = calculateTotal();
-      const itemIds = cart.map(item => item.id);
+      const itemIds = cartItems.map((item) => item.product);
       await createOrder({ total_amount, items: itemIds });
       alert('Order placed successfully!');
-      setCart([]);
-      fetchProducts(); 
-      handleOpenOrders(); 
+      await fetchSessionData();
+      fetchProducts();
+      handleOpenOrders();
     } catch (err) {
-      console.error("Order error:", err);
+      console.error('Order error:', err);
       alert('Failed to place order.');
     }
   };
@@ -148,17 +260,19 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('access_token');
     setToken('');
-    setCart([]);
+    setProfile(null);
+    setCart(emptyCart);
     setOrders([]);
     setView('catalog');
     alert('Logged out successfully.');
   };
 
-  // Filter logic for search and category
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          product.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === '' || product.category === parseInt(selectedCategory);
+  const filteredProducts = products.filter((product) => {
+    const matchesSearch =
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory =
+      selectedCategory === '' || product.category === parseInt(selectedCategory);
     return matchesSearch && matchesCategory;
   });
 
@@ -167,13 +281,22 @@ function App() {
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #eaeaea', paddingBottom: '10px', marginBottom: '20px' }}>
         <div>
           <h1>🛒 Multi-Vendor E-Commerce Platform</h1>
-          <p style={{ margin: 0, color: '#666' }}>Django REST + React + MySQL Full-Stack App</p>
+          <p style={{ margin: 0, color: '#666' }}>
+            Django REST + React + MySQL Full-Stack App
+            {profile && (
+              <span>
+                {' '}— Signed in as <strong>{profile.username}</strong> ({profile.role}
+                {profile.store_name ? ` • ${profile.store_name}` : ''})
+              </span>
+            )}
+          </p>
         </div>
         <div>
           <button onClick={() => setView('catalog')} style={navBtnStyle}>Catalog</button>
-          <button onClick={() => setView('cart')} style={navBtnStyle}>Cart ({cart.length})</button>
+          <button onClick={() => setView('cart')} style={navBtnStyle}>Cart ({cartCount})</button>
           {token ? (
             <>
+              <button onClick={handleOpenProfile} style={navBtnStyle}>My Profile</button>
               <button onClick={handleOpenOrders} style={navBtnStyle}>My Orders</button>
               <button onClick={() => setView('add-product')} style={navBtnStyle}>Add Product (Vendor)</button>
               <button onClick={handleLogout} style={{ ...navBtnStyle, backgroundColor: '#e74c3c', color: 'white' }}>Logout</button>
@@ -192,22 +315,21 @@ function App() {
         <div>
           <h2>Product Catalog</h2>
 
-          {/* Search & Filter Bar */}
           <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
-            <input 
-              type="text" 
-              placeholder="Search products..." 
-              value={searchTerm} 
-              onChange={e => setSearchTerm(e.target.value)} 
-              style={{ ...inputStyle, flex: 2 }} 
+            <input
+              type="text"
+              placeholder="Search products..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ ...inputStyle, flex: 2 }}
             />
-            <select 
-              value={selectedCategory} 
-              onChange={e => setSelectedCategory(e.target.value)} 
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
               style={{ ...inputStyle, flex: 1 }}
             >
               <option value="">All Categories</option>
-              {categories.map(cat => (
+              {categories.map((cat) => (
                 <option key={cat.id} value={cat.id}>{cat.name}</option>
               ))}
             </select>
@@ -217,7 +339,7 @@ function App() {
             <p>No products found matching your search or filter.</p>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '20px' }}>
-              {filteredProducts.map(product => (
+              {filteredProducts.map((product) => (
                 <div key={product.id} style={{ border: '1px solid #ddd', borderRadius: '8px', padding: '15px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                   <div>
                     <h3>{product.name}</h3>
@@ -245,22 +367,34 @@ function App() {
       {view === 'cart' && (
         <div>
           <h2>Your Shopping Cart</h2>
-          {cart.length === 0 ? (
+          {cartItems.length === 0 ? (
             <p>Your cart is empty. Browse the catalog to add items.</p>
           ) : (
             <div>
-              {cart.map((item, index) => (
-                <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', padding: '10px 0' }}>
+              {cartItems.map((item) => (
+                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', padding: '10px 0' }}>
                   <div>
-                    <h4>{item.name}</h4>
-                    <p style={{ margin: 0, color: '#2ecc71' }}>₹{item.price}</p>
+                    <h4>{item.product_name} (x{item.quantity})</h4>
+                    <p style={{ margin: 0, color: '#2ecc71' }}>
+                      ₹{item.product_price} each — Subtotal: ₹{item.subtotal}
+                    </p>
                   </div>
-                  <button onClick={() => removeFromCart(index)} style={{ backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}>Remove</button>
+                  <button
+                    onClick={() => removeFromCart(item.id)}
+                    style={{ backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    Remove
+                  </button>
                 </div>
               ))}
               <div style={{ marginTop: '20px', textAlign: 'right' }}>
                 <h3>Total Amount: ₹{calculateTotal()}</h3>
-                <button onClick={handleCheckout} style={{ padding: '10px 20px', backgroundColor: '#2ecc71', color: 'white', border: 'none', borderRadius: '4px', fontSize: '16px', cursor: 'pointer' }}>Place Order</button>
+                <button
+                  onClick={handleCheckout}
+                  style={{ padding: '10px 20px', backgroundColor: '#2ecc71', color: 'white', border: 'none', borderRadius: '4px', fontSize: '16px', cursor: 'pointer' }}
+                >
+                  Place Order
+                </button>
               </div>
             </div>
           )}
@@ -275,7 +409,7 @@ function App() {
             <p>You haven't placed any orders yet.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              {orders.map(order => (
+              {orders.map((order) => (
                 <div key={order.id} style={{ border: '1px solid #ddd', borderRadius: '8px', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <h4 style={{ margin: '0 0 5px 0' }}>Order #{order.id}</h4>
@@ -296,8 +430,8 @@ function App() {
         <div style={formContainerStyle}>
           <h2>Login</h2>
           <form onSubmit={handleLogin} style={formStyle}>
-            <input type="text" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} required style={inputStyle} />
-            <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required style={inputStyle} />
+            <input type="text" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} required style={inputStyle} />
+            <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required style={inputStyle} />
             <button type="submit" style={submitBtnStyle}>Login</button>
           </form>
         </div>
@@ -308,10 +442,10 @@ function App() {
         <div style={formContainerStyle}>
           <h2>Register</h2>
           <form onSubmit={handleRegister} style={formStyle}>
-            <input type="text" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} required style={inputStyle} />
-            <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required style={inputStyle} />
-            <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required style={inputStyle} />
-            <select value={role} onChange={e => setRole(e.target.value)} style={inputStyle}>
+            <input type="text" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} required style={inputStyle} />
+            <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required style={inputStyle} />
+            <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required style={inputStyle} />
+            <select value={role} onChange={(e) => setRole(e.target.value)} style={inputStyle}>
               <option value="CUSTOMER">Customer</option>
               <option value="VENDOR">Vendor</option>
             </select>
@@ -325,18 +459,46 @@ function App() {
         <div style={formContainerStyle}>
           <h2>Add New Product (Vendor Portal)</h2>
           <form onSubmit={handleAddProduct} style={formStyle}>
-            <input type="text" placeholder="Product Name" value={name} onChange={e => setName(e.target.value)} required style={inputStyle} />
-            <textarea placeholder="Description" value={description} onChange={e => setDescription(e.target.value)} required style={{ ...inputStyle, height: '80px' }} />
-            <input type="number" placeholder="Price (₹)" value={price} onChange={e => setPrice(e.target.value)} required style={inputStyle} />
-            <input type="number" placeholder="Stock Quantity" value={stock} onChange={e => setStock(e.target.value)} required style={inputStyle} />
-            <select value={categoryId} onChange={e => setCategoryId(e.target.value)} style={inputStyle}>
+            <input type="text" placeholder="Product Name" value={name} onChange={(e) => setName(e.target.value)} required style={inputStyle} />
+            <textarea placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} required style={{ ...inputStyle, height: '80px' }} />
+            <input type="number" placeholder="Price (₹)" value={price} onChange={(e) => setPrice(e.target.value)} required style={inputStyle} />
+            <input type="number" placeholder="Stock Quantity" value={stock} onChange={(e) => setStock(e.target.value)} required style={inputStyle} />
+            <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} style={inputStyle}>
               <option value="">Select Category</option>
-              {categories.map(cat => (
+              {categories.map((cat) => (
                 <option key={cat.id} value={cat.id}>{cat.name}</option>
               ))}
             </select>
             <button type="submit" style={submitBtnStyle}>Create Product</button>
           </form>
+        </div>
+      )}
+
+      {/* VIEW 7: USER PROFILE */}
+      {view === 'profile' && (
+        <div style={formContainerStyle}>
+          <h2>My Profile</h2>
+          {profile ? (
+            <>
+              <p style={{ margin: '0 0 6px 0' }}><strong>Username:</strong> {profile.username}</p>
+              <p style={{ margin: '0 0 6px 0' }}><strong>Role:</strong> {profile.role}</p>
+              {profile.role === 'VENDOR' && (
+                <p style={{ margin: '0 0 12px 0' }}>
+                  <strong>Store:</strong> {profile.store_name || 'N/A'} ({profile.is_approved ? 'Approved' : 'Pending Approval'})
+                </p>
+              )}
+              <form onSubmit={handleSaveProfile} style={formStyle}>
+                <input type="email" placeholder="Email" value={profileEmail} onChange={(e) => setProfileEmail(e.target.value)} style={inputStyle} />
+                <input type="text" placeholder="Phone Number" value={phone} onChange={(e) => setPhone(e.target.value)} style={inputStyle} />
+                <textarea placeholder="Address" value={address} onChange={(e) => setAddress(e.target.value)} style={{ ...inputStyle, height: '70px' }} />
+                <input type="text" placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} style={inputStyle} />
+                <input type="text" placeholder="Pincode" value={pincode} onChange={(e) => setPincode(e.target.value)} style={inputStyle} />
+                <button type="submit" style={submitBtnStyle}>Save Profile</button>
+              </form>
+            </>
+          ) : (
+            <p>Loading profile...</p>
+          )}
         </div>
       )}
     </div>
