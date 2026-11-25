@@ -25,13 +25,14 @@ function App() {
   const [view, setView] = useState('catalog');
   const [token, setToken] = useState(localStorage.getItem('access_token') || '');
   const [cart, setCart] = useState(emptyCart);
+  const [statusMessage, setStatusMessage] = useState('');
 
   // Profile form states
+  const [profileEmail, setProfileEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
   const [pincode, setPincode] = useState('');
-  const [profileEmail, setProfileEmail] = useState('');
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -50,7 +51,7 @@ function App() {
   const [stock, setStock] = useState('');
   const [categoryId, setCategoryId] = useState('');
 
-  const syncProfileForm = (profileData) => {
+  const syncProfileState = (profileData) => {
     setProfile(profileData);
     setProfileEmail(profileData?.email || '');
     setPhone(profileData?.phone || '');
@@ -69,15 +70,18 @@ function App() {
 
     try {
       const [profileRes, cartRes] = await Promise.all([getProfile(), getCart()]);
-      syncProfileForm(profileRes.data);
+      syncProfileState(profileRes.data);
       setCart(cartRes.data || emptyCart);
+      setStatusMessage('');
     } catch (err) {
-      console.error('Error syncing profile/cart:', err);
-      if (err.response && err.response.status === 401) {
+      console.error('Failed to load session from backend:', err);
+      if (err.response?.status === 401) {
         localStorage.removeItem('access_token');
         setToken('');
         setProfile(null);
         setCart(emptyCart);
+      } else {
+        setStatusMessage('Could not sync cart/profile from server. Check backend deployment & migrations.');
       }
     }
   };
@@ -87,7 +91,7 @@ function App() {
     fetchCategories();
   }, []);
 
-  // Re-runs on initial page load / refresh and whenever token changes
+  // Runs on initial page load / refresh and whenever login token changes
   useEffect(() => {
     if (token) {
       fetchSessionData();
@@ -131,7 +135,6 @@ function App() {
       const res = await loginUser({ username, password });
       localStorage.setItem('access_token', res.data.access);
       setToken(res.data.access);
-      alert('Login successful!');
       setView('catalog');
     } catch (err) {
       alert('Login failed. Check your credentials.');
@@ -159,11 +162,11 @@ function App() {
         city,
         pincode,
       });
-      syncProfileForm(res.data);
-      alert('Profile updated successfully!');
+      syncProfileState(res.data);
+      alert('Profile saved permanently!');
     } catch (err) {
-      console.error('Profile update error:', err);
-      alert('Failed to update profile.');
+      console.error('Profile update failed:', err);
+      alert('Failed to save profile changes.');
     }
   };
 
@@ -196,16 +199,15 @@ function App() {
       return;
     }
     if (!token) {
-      alert('Please log in so your cart items stay saved across refreshes.');
+      alert('Please log in first so your cart is saved to your account.');
       setView('login');
       return;
     }
     try {
       const res = await addToCartApi(product.id, 1);
       setCart(res.data || emptyCart);
-      alert(`${product.name} added to cart!`);
     } catch (err) {
-      console.error('Add to cart error:', err);
+      console.error('Add to cart failed:', err);
       alert(err.response?.data?.detail || 'Failed to add item to cart.');
     }
   };
@@ -215,7 +217,7 @@ function App() {
       const res = await removeFromCartApi(itemId);
       setCart(res.data || emptyCart);
     } catch (err) {
-      console.error('Remove item error:', err);
+      console.error('Remove from cart failed:', err);
       alert('Failed to remove item from cart.');
     }
   };
@@ -264,7 +266,6 @@ function App() {
     setCart(emptyCart);
     setOrders([]);
     setView('catalog');
-    alert('Logged out successfully.');
   };
 
   const filteredProducts = products.filter((product) => {
@@ -278,28 +279,32 @@ function App() {
 
   return (
     <div style={{ fontFamily: 'Arial, sans-serif', padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #eaeaea', paddingBottom: '10px', marginBottom: '20px' }}>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #eaeaea', paddingBottom: '12px', marginBottom: '20px', gap: '12px', flexWrap: 'wrap' }}>
         <div>
-          <h1>🛒 Multi-Vendor E-Commerce Platform</h1>
-          <p style={{ margin: 0, color: '#666' }}>
-            Django REST + React + MySQL Full-Stack App
-            {profile && (
-              <span>
-                {' '}— Signed in as <strong>{profile.username}</strong> ({profile.role}
-                {profile.store_name ? ` • ${profile.store_name}` : ''})
-              </span>
-            )}
-          </p>
+          <h1 style={{ margin: 0 }}>🛒 Multi-Vendor E-Commerce Platform</h1>
+          <p style={{ margin: '4px 0 0 0', color: '#666' }}>Django REST + React + MySQL Full-Stack App</p>
         </div>
-        <div>
+
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
           <button onClick={() => setView('catalog')} style={navBtnStyle}>Catalog</button>
           <button onClick={() => setView('cart')} style={navBtnStyle}>Cart ({cartCount})</button>
           {token ? (
             <>
-              <button onClick={handleOpenProfile} style={navBtnStyle}>My Profile</button>
               <button onClick={handleOpenOrders} style={navBtnStyle}>My Orders</button>
               <button onClick={() => setView('add-product')} style={navBtnStyle}>Add Product (Vendor)</button>
-              <button onClick={handleLogout} style={{ ...navBtnStyle, backgroundColor: '#e74c3c', color: 'white' }}>Logout</button>
+              <button
+                onClick={handleOpenProfile}
+                title="View User Profile"
+                style={profileIconBtnStyle}
+              >
+                <span style={avatarCircleStyle}>
+                  {(profile?.username?.[0] || 'U').toUpperCase()}
+                </span>
+                <span>{profile?.username || 'Profile'}</span>
+              </button>
+              <button onClick={handleLogout} style={{ ...navBtnStyle, backgroundColor: '#e74c3c', color: 'white', borderColor: '#e74c3c' }}>
+                Logout
+              </button>
             </>
           ) : (
             <>
@@ -309,6 +314,12 @@ function App() {
           )}
         </div>
       </header>
+
+      {statusMessage && (
+        <div style={{ backgroundColor: '#fff3cd', color: '#856404', padding: '10px 14px', borderRadius: '6px', marginBottom: '16px', border: '1px solid #ffeeba' }}>
+          {statusMessage}
+        </div>
+      )}
 
       {/* VIEW 1: CATALOG */}
       {view === 'catalog' && (
@@ -474,30 +485,46 @@ function App() {
         </div>
       )}
 
-      {/* VIEW 7: USER PROFILE */}
+      {/* VIEW 7: USER PROFILE DETAILS */}
       {view === 'profile' && (
-        <div style={formContainerStyle}>
-          <h2>My Profile</h2>
+        <div style={profileCardStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '18px', borderBottom: '1px solid #eee', paddingBottom: '14px' }}>
+            <div style={largeAvatarStyle}>
+              {(profile?.username?.[0] || 'U').toUpperCase()}
+            </div>
+            <div>
+              <h2 style={{ margin: 0 }}>{profile?.username || 'User Profile'}</h2>
+              <span style={roleBadgeStyle}>{profile?.role || 'USER'}</span>
+            </div>
+          </div>
+
           {profile ? (
             <>
-              <p style={{ margin: '0 0 6px 0' }}><strong>Username:</strong> {profile.username}</p>
-              <p style={{ margin: '0 0 6px 0' }}><strong>Role:</strong> {profile.role}</p>
-              {profile.role === 'VENDOR' && (
-                <p style={{ margin: '0 0 12px 0' }}>
-                  <strong>Store:</strong> {profile.store_name || 'N/A'} ({profile.is_approved ? 'Approved' : 'Pending Approval'})
-                </p>
-              )}
+              <div style={{ marginBottom: '16px', lineHeight: '1.7', fontSize: '14px' }}>
+                <p style={{ margin: 0 }}><strong>Username:</strong> {profile.username}</p>
+                <p style={{ margin: 0 }}><strong>Email:</strong> {profile.email || 'Not set'}</p>
+                <p style={{ margin: 0 }}><strong>Role:</strong> {profile.role}</p>
+                {profile.role === 'VENDOR' && (
+                  <>
+                    <p style={{ margin: 0 }}><strong>Store Name:</strong> {profile.store_name || 'Not configured'}</p>
+                    <p style={{ margin: 0 }}>
+                      <strong>Vendor Status:</strong> {profile.is_approved ? 'Approved' : 'Pending Approval'}
+                    </p>
+                  </>
+                )}
+              </div>
+
               <form onSubmit={handleSaveProfile} style={formStyle}>
                 <input type="email" placeholder="Email" value={profileEmail} onChange={(e) => setProfileEmail(e.target.value)} style={inputStyle} />
                 <input type="text" placeholder="Phone Number" value={phone} onChange={(e) => setPhone(e.target.value)} style={inputStyle} />
                 <textarea placeholder="Address" value={address} onChange={(e) => setAddress(e.target.value)} style={{ ...inputStyle, height: '70px' }} />
                 <input type="text" placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} style={inputStyle} />
                 <input type="text" placeholder="Pincode" value={pincode} onChange={(e) => setPincode(e.target.value)} style={inputStyle} />
-                <button type="submit" style={submitBtnStyle}>Save Profile</button>
+                <button type="submit" style={submitBtnStyle}>Save Profile Changes</button>
               </form>
             </>
           ) : (
-            <p>Loading profile...</p>
+            <p>Loading profile details...</p>
           )}
         </div>
       )}
@@ -506,7 +533,53 @@ function App() {
 }
 
 // Styling helpers
-const navBtnStyle = { marginLeft: '10px', padding: '8px 15px', cursor: 'pointer', borderRadius: '4px', border: '1px solid #ccc', backgroundColor: '#f9f9f9' };
+const navBtnStyle = { padding: '8px 14px', cursor: 'pointer', borderRadius: '4px', border: '1px solid #ccc', backgroundColor: '#f9f9f9' };
+const profileIconBtnStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '8px',
+  padding: '6px 12px',
+  cursor: 'pointer',
+  borderRadius: '20px',
+  border: '1px solid #3498db',
+  backgroundColor: '#eef7fd',
+  color: '#1f5f8b',
+  fontWeight: 'bold',
+};
+const avatarCircleStyle = {
+  width: '24px',
+  height: '24px',
+  borderRadius: '50%',
+  backgroundColor: '#3498db',
+  color: 'white',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: '12px',
+};
+const largeAvatarStyle = {
+  width: '52px',
+  height: '52px',
+  borderRadius: '50%',
+  backgroundColor: '#3498db',
+  color: 'white',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: '22px',
+  fontWeight: 'bold',
+};
+const roleBadgeStyle = {
+  display: 'inline-block',
+  marginTop: '4px',
+  padding: '2px 10px',
+  borderRadius: '12px',
+  backgroundColor: '#eafaf1',
+  color: '#2ecc71',
+  fontSize: '12px',
+  fontWeight: 'bold',
+};
+const profileCardStyle = { maxWidth: '460px', margin: '30px auto', padding: '24px', border: '1px solid #ddd', borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', backgroundColor: '#fff' };
 const formContainerStyle = { maxWidth: '400px', margin: '40px auto', padding: '20px', border: '1px solid #ddd', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' };
 const formStyle = { display: 'flex', flexDirection: 'column', gap: '15px' };
 const inputStyle = { padding: '10px', borderRadius: '4px', border: '1px solid #ccc', fontSize: '14px' };
