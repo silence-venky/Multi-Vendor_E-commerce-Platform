@@ -198,8 +198,14 @@ function App() {
       fetchProducts();
       setView('catalog');
     } catch (err) {
-      console.error('Create product error:', err);
-      alert('Failed to create product. Ensure you are logged in as a Vendor with an approved profile.');
+      console.error('Create product error:', err.response?.data || err);
+      const data = err.response?.data;
+      const backendMsg =
+        data?.detail ||
+        (typeof data === 'object' && data !== null ? JSON.stringify(data) : null) ||
+        err.message ||
+        'Failed to create product.';
+      alert(`Error creating product (${err.response?.status || 'Network'}): ${backendMsg}`);
     }
   };
 

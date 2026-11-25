@@ -27,7 +27,12 @@ export const getProducts = () => api.get('api/products/');
 export const getCategories = () => api.get('api/categories/');
 export const registerUser = (userData) => api.post('api/register/', userData);
 export const loginUser = (credentials) => api.post('api/login/', credentials);
-export const createProduct = (productData) => api.post('api/products/', productData);
+export const createProduct = (productData) => {
+    const isFormData = productData instanceof FormData;
+    return api.post('api/products/', productData, {
+        headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : {},
+    });
+};
 export const createOrder = (orderData) => api.post('api/orders/', orderData);
 export const getOrders = () => api.get('api/orders/');
 
