@@ -60,7 +60,18 @@ function App() {
   const [stock, setStock] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [productImage, setProductImage] = useState(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState('');
   const [fileInputKey, setFileInputKey] = useState(0);
+
+  useEffect(() => {
+    if (!productImage) {
+      setImagePreviewUrl('');
+      return;
+    }
+    const objectUrl = URL.createObjectURL(productImage);
+    setImagePreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [productImage]);
 
   const syncProfileState = (profileData) => {
     setProfile(profileData);
@@ -683,6 +694,15 @@ function App() {
                 onChange={(e) => setProductImage(e.target.files?.[0] || null)}
                 className="form-control"
               />
+              {imagePreviewUrl && (
+                <div className="image-preview-box">
+                  <img
+                    src={imagePreviewUrl}
+                    alt="Selected product preview"
+                    className="image-preview-img"
+                  />
+                </div>
+              )}
             </div>
             <button type="submit" className="submit-btn">
               Create Product
