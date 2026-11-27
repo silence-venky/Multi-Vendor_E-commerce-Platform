@@ -205,6 +205,7 @@ function App() {
       setProductImage(null);
       setFileInputKey((prev) => prev + 1);
       fetchProducts();
+      await fetchSessionData();
       setView('catalog');
     } catch (err) {
       console.error('Create product error:', err.response?.data || err);
@@ -767,6 +768,65 @@ function App() {
                   Save Profile Changes
                 </button>
               </form>
+
+              {profile.role === 'VENDOR' && (
+                <div className="vendor-products-section">
+                  <div className="vendor-products-header">
+                    <h3 style={{ margin: 0, fontSize: '16px' }}>My Added Products</h3>
+                    <span className="result-count-pill">
+                      {(profile.products || []).length}{' '}
+                      {(profile.products || []).length === 1 ? 'Product' : 'Products'}
+                    </span>
+                  </div>
+
+                  {!profile.products || profile.products.length === 0 ? (
+                    <p className="empty-state">
+                      You haven't added any products yet.{' '}
+                      <button
+                        type="button"
+                        onClick={() => setView('add-product')}
+                        className="nav-btn"
+                        style={{ marginLeft: '6px' }}
+                      >
+                        + Add First Product
+                      </button>
+                    </p>
+                  ) : (
+                    <div className="vendor-product-list">
+                      {profile.products.map((item) => (
+                        <div key={item.id} className="vendor-product-item">
+                          <div className="vendor-product-left">
+                            {item.image && (
+                              <img
+                                src={getImageUrl(item.image)}
+                                alt={item.name}
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                                className="vendor-product-thumb"
+                              />
+                            )}
+                            <div className="vendor-product-info">
+                              <h4>{item.name}</h4>
+                              <p>
+                                ₹{item.price} • Stock: {item.stock_quantity}
+                                {item.category_name ? ` • ${item.category_name}` : ''}
+                              </p>
+                            </div>
+                          </div>
+                          <span
+                            className={`status-badge ${
+                              item.stock_quantity > 0 ? '' : 'sold-out-badge'
+                            }`}
+                          >
+                            {item.stock_quantity > 0 ? 'Active' : 'Sold Out'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           ) : (
             <p className="empty-state">Loading profile details...</p>
