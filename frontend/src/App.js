@@ -305,9 +305,12 @@ function App() {
   return (
     <div className="app-shell">
       <header className="top-header">
-        <div>
-          <h1 className="brand-title">🛒 Multi-Vendor E-Commerce Platform</h1>
-          <p className="brand-subtitle">Django REST + React + MySQL Full-Stack App</p>
+        <div className="brand-block">
+          <div className="brand-row">
+            <h1 className="brand-title">🛒 Multi-Vendor Bazaar</h1>
+            <span className="storefront-tag">Best Value &amp; Deals</span>
+          </div>
+          <p className="brand-subtitle">Django REST + React + MySQL Multi-Vendor Storefront</p>
         </div>
 
         <nav className="nav-group">
@@ -376,12 +379,41 @@ function App() {
       {/* VIEW 1: CATALOG */}
       {view === 'catalog' && (
         <section className="section-card">
-          <h2 className="section-heading">Product Catalog</h2>
+          <div className="catalog-topbar">
+            <h2 className="section-heading">Trending Products</h2>
+            <span className="result-count-pill">
+              {filteredProducts.length} {filteredProducts.length === 1 ? 'Item' : 'Items'} Available
+            </span>
+          </div>
+
+          {categories.length > 0 && (
+            <div className="category-strip">
+              <button
+                type="button"
+                onClick={() => setSelectedCategory('')}
+                className={`category-chip ${selectedCategory === '' ? 'active' : ''}`}
+              >
+                All Categories
+              </button>
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setSelectedCategory(String(cat.id))}
+                  className={`category-chip ${
+                    String(selectedCategory) === String(cat.id) ? 'active' : ''
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="filter-bar">
             <input
               type="text"
-              placeholder="Search products..."
+              placeholder="Search for products, brands, and descriptions..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="form-control filter-search"
@@ -407,29 +439,40 @@ function App() {
               {filteredProducts.map((product) => (
                 <article key={product.id} className="product-card">
                   <div>
-                    {product.image && (
-                      <img
-                        src={getImageUrl(product.image)}
-                        alt={product.name}
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
-                        className="product-image"
-                      />
-                    )}
+                    <div className="product-media-box">
+                      {product.image ? (
+                        <img
+                          src={getImageUrl(product.image)}
+                          alt={product.name}
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                          className="product-image"
+                        />
+                      ) : (
+                        <span className="product-placeholder">No Image Added</span>
+                      )}
+                    </div>
+
                     <h3 className="product-title">{product.name}</h3>
                     <p className="product-desc">{product.description}</p>
-                    <p className="product-price">₹{product.price}</p>
+
+                    <div className="price-row">
+                      <p className="product-price">₹{product.price}</p>
+                      <span className="delivery-tag">Free Delivery</span>
+                    </div>
+
                     <p
                       className={`product-stock ${
                         product.stock_quantity > 0 ? 'in-stock' : 'out-of-stock'
                       }`}
                     >
                       {product.stock_quantity > 0
-                        ? `Stock: ${product.stock_quantity}`
+                        ? `In Stock (${product.stock_quantity} left)`
                         : 'Out of Stock'}
                     </p>
                   </div>
+
                   <button
                     onClick={() => addToCart(product)}
                     disabled={product.stock_quantity <= 0}
@@ -447,7 +490,11 @@ function App() {
       {/* VIEW 2: CART & CHECKOUT */}
       {view === 'cart' && (
         <section className="section-card">
-          <h2 className="section-heading">Your Shopping Cart</h2>
+          <div className="catalog-topbar">
+            <h2 className="section-heading">Your Shopping Cart</h2>
+            <span className="result-count-pill">{cartCount} Items</span>
+          </div>
+
           {cartItems.length === 0 ? (
             <p className="empty-state">Your cart is empty. Browse the catalog to add items.</p>
           ) : (
@@ -458,7 +505,7 @@ function App() {
                     <h4 style={{ margin: '0 0 4px' }}>
                       {item.product_name} (x{item.quantity})
                     </h4>
-                    <p style={{ margin: 0, color: '#16a34a', fontWeight: 600 }}>
+                    <p style={{ margin: 0, color: '#15803d', fontWeight: 700 }}>
                       ₹{item.product_price} each — Subtotal: ₹{item.subtotal}
                     </p>
                   </div>
@@ -468,7 +515,7 @@ function App() {
                 </div>
               ))}
               <div className="cart-summary">
-                <h3 style={{ margin: 0 }}>Total Amount: ₹{calculateTotal()}</h3>
+                <h3 style={{ margin: 0 }}>Total Payable: ₹{calculateTotal()}</h3>
                 <button onClick={handleCheckout} className="checkout-btn">
                   Place Order
                 </button>
@@ -481,7 +528,11 @@ function App() {
       {/* VIEW 3: MY ORDERS */}
       {view === 'orders' && (
         <section className="section-card">
-          <h2 className="section-heading">My Order History</h2>
+          <div className="catalog-topbar">
+            <h2 className="section-heading">My Order History</h2>
+            <span className="result-count-pill">{orders.length} Orders</span>
+          </div>
+
           {orders.length === 0 ? (
             <p className="empty-state">You haven't placed any orders yet.</p>
           ) : (
@@ -490,7 +541,7 @@ function App() {
                 <div key={order.id} className="order-card">
                   <div>
                     <h4 style={{ margin: '0 0 5px' }}>Order #{order.id}</h4>
-                    <p style={{ margin: 0, color: '#475569' }}>
+                    <p style={{ margin: 0, color: '#4b5563' }}>
                       Total Paid: <strong>₹{order.total_amount}</strong>
                     </p>
                   </div>
@@ -505,7 +556,7 @@ function App() {
       {/* VIEW 4: LOGIN */}
       {view === 'login' && (
         <div className="form-card">
-          <h2 className="section-heading">Login</h2>
+          <h2 className="section-heading">Login to Your Account</h2>
           <form onSubmit={handleLogin} className="styled-form">
             <input
               type="text"
@@ -533,7 +584,7 @@ function App() {
       {/* VIEW 5: REGISTER */}
       {view === 'register' && (
         <div className="form-card">
-          <h2 className="section-heading">Register</h2>
+          <h2 className="section-heading">Create Account</h2>
           <form onSubmit={handleRegister} className="styled-form">
             <input
               type="text"
