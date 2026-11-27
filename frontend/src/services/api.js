@@ -23,6 +23,18 @@ api.interceptors.request.use(
     }
 );
 
+// Automatically clear expired/invalid tokens on 401 responses
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401) {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+        }
+        return Promise.reject(error);
+    }
+);
+
 export const getProducts = () => api.get('api/products/');
 export const getCategories = () => api.get('api/categories/');
 export const registerUser = (userData) => api.post('api/register/', userData);
