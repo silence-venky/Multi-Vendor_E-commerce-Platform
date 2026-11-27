@@ -29,7 +29,8 @@ class RegisterSerializer(serializers.ModelSerializer):
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = ["id", "name", "description"]
+        # Only include fields that actually exist on your Category model
+        fields = ["id", "name"]
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -77,15 +78,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
+        # Remove any of phone/address/city/pincode that are not columns on your User model
         fields = [
             "id",
             "username",
             "email",
             "role",
-            "phone",
-            "address",
-            "city",
-            "pincode",
             "store_name",
             "is_approved",
             "products",
